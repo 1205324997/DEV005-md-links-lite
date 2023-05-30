@@ -16,8 +16,29 @@ const existMdLink = (userPath) => new Promise((resolve, reject) => {
 
 existMdLink(userPath)
   .then((pathResolve) => {
-    console.log(`La ruta: ${pathResolve} es válida`);//si la promesa se cumple nos manda un mensaje es valida 
+    console.log(`La ruta: ${pathResolve} es válida`);//si la promesa se cumple nos dice es valida y se llama a validateFileDirectory
+    const fileValid = validateFileDirectory(pathResolve);//Validamos los archivos de la ruta y nos muestra todos los archivos .md
+    console.log('.md encontrados:', fileValid);
   })
   .catch((error) => {//si la promesa no se cumple nos arroja error
     console.log(error);
   });
+
+// Verificar si es archivo o directorio y muestra los archivos .md
+const validateFileDirectory = (absolutePath) => {// si hay .md los agrega a un array
+  let fileValid = [];
+  if (fs.lstatSync(absolutePath).isFile() && path.extname(absolutePath) === '.md') {
+    fileValid.push(absolutePath);
+    
+  }
+  if (fs.lstatSync(absolutePath).isDirectory()) {
+    const arrayPath = fs.readdirSync(absolutePath);//si la ruta es un directorio la leemos
+    arrayPath.forEach((route) => {
+      const routePath = path.join(absolutePath, route);
+      fileValid = fileValid.concat(validateFileDirectory(routePath));
+    });
+  } else {
+
+  }
+  return fileValid;
+};
