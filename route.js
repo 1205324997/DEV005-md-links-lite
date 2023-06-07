@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs'); // podemos trabajar con archivos path
+const { log } = require('console');
 
 const userPath = process.argv[2];
 
@@ -18,16 +19,11 @@ const existPath = (userPath) => {
 const absolutePath = (userPath) => {
     if (path.isAbsolute(userPath)) {
         console.log('La ruta es absoluta');
-        return userPath;
+      return userPath;
     } else {
-        console.log('La ruta no era absoluta: ', path.resolve(userPath));
-        return path.resolve(userPath);
+        console.log('la ruta se convirtio en absoluta');
+      return path.resolve(userPath);
     }
-   
-};
-
-/*if (existPath(userPath)) {
-    absolutePath(userPath);
-}*/
+  };
 
 module.exports = { existPath, absolutePath };
