@@ -1,91 +1,85 @@
-const {  validateFileDirectory, extractMdLinks } = require('../library.js');
-const { existPath, absolutePath } = require('../route.js')
 const fs = require('fs');
-const path = require('path');
+const { paths } = require('../route');
+const { extractLinks } = require('../library');
+const {readFile} = require('../readFile');
+const axios = require('axios');
+const { validateLinks } = require('../validate');
 
-describe('validateFileDirectory', () => {
-  it('Deberia ser una función', () => {
-    expect(typeof validateFileDirectory).toBe('function');
+
+describe('paths', () => {
+  it('Debería devolver la ruta absoluta si existe ruta', () => {
+    const ruta = paths('README.md');
+    expect(ruta).toBeTruthy(); // Verifica si se devuelve una ruta válida
+  });
+
+  it('Debería devolver undefined si no existe la ruta', () => {
+    const ruta = paths('rutaInexistente');
+    expect(ruta).toBeUndefined(); // Verifica si se devuelve undefined
   });
 });
 
-describe('extractMdLinks', () => {
-  it('Deberia ser una función', () => {
-    expect(typeof extractMdLinks).toBe('function');
+describe('extractLinks', () => {
+  test('debería extraer los enlaces de un archivo', () => {
+    const pathFile = './README.md';
+
+    // Leer el contenido del archivo de forma síncrona
+    const fileContent = fs.readFileSync(pathFile, 'utf8');
+
+    return extractLinks(fileContent, pathFile).then((links) => {
+      expect(Array.isArray(links)).toBe(true);
+      expect(links.length).toBeGreaterThan(0);
+    });
+  });
+
+  test('debería rechazar la promesa cuando ocurre un error', () => {
+    const pathFile = './jajaja.md';
+    return extractLinks(pathFile).catch((error) => {
+      expect(error).toBeDefined();
+    });
   });
 });
 
-describe('extractMdLinks', () => {
-  test('debería devolver un array vacío si no se encuentran enlaces', () => {
-    const fileContent = 'Este es un archivo de prueba sin enlaces.';
-    const filePath = '/ruta/a/archivo.md';
-    const result = extractMdLinks(fileContent, filePath);
-    expect(result).toEqual([]);
-  });
+describe('readFile', () => {
+  it('debe leer el archivo y mostrar su lectura', () => {
+    const route = './README.md';
 
-  test('debería devolver un array con los enlaces encontrados en el contenido del archivo', () => {
-    const fileContent = 'Este es un [enlace 1](https://www.enlace1.com) y [enlace 2](https://www.enlace2.com) en el archivo.';
-    const filePath = '/ruta/a/archivo.md';
-    const result = extractMdLinks(fileContent, filePath);
-    const expected = [
-      {
-        text: 'enlace 1',
-        url: 'https://www.enlace1.com',
-        filePath: filePath
-      },
-      {
-        text: 'enlace 2',
-        url: 'https://www.enlace2.com',
-        filePath: filePath
-      }
-    ];
-    expect(result).toEqual(expected);
+    return readFile(route).then((fileContent) => {
+      expect(fileContent).toBeDefined();
+    });
+  });
+  it('debe devolver error si no se cumple la promesa', () => {
+    const ruta = './jajaj.md';
+
+    return readFile(ruta).catch((error) => {
+      expect(error).toBeDefined();
+      console.log('Error al leer el archivo', error);
+    });
   });
 });
 
-describe('absolutePath', () => {
-  it('Deberia ser una función', () => {
-    expect(typeof absolutePath).toBe('function');
-  });
+jest.mock('axios');
 
-  it('Deberia devolver la ruta absoluta cuando la ruta es absoluta', () => {
-    const userPath = '/ruta/absoluta';
-    const result = absolutePath(userPath);
+describe('validateLinks', () => {
+    it('debería devolver los enlaces validados con sus propiedades de estado y ok', () => {
+        const links = [
+            { href: 'http://example.com' },
+            { href: 'http://google.com' },
+            { href: 'http://invalid-url.com' },
+        ];
 
-    expect(result).toBe(userPath);
-  });
+        axios.head
+            .mockResolvedValueOnce({ status: 200 })
+            .mockRejectedValueOnce({})
+            .mockResolvedValueOnce({ status: 200 });
 
-  it('Deberia devolver la ruta absoluta cuando la ruta es relativa', () => {
-    const userPath = 'ruta/relativa';
-    const expectedPath = path.resolve(userPath);
-    const result = absolutePath(userPath);
-
-    expect(result).toBe(expectedPath);
-  });
+        return validateLinks(links).then((result) => {
+            expect(result).toEqual([
+                { href: 'http://example.com', status: 200, ok: true },
+                { href: 'http://google.com', status: 404, ok: false },
+                { href: 'http://invalid-url.com', status: 200, ok: true },
+            ]);
+            expect(axios.head).toHaveBeenCalledTimes(3);
+        });
+    });
 });
 
-describe('existPath', () => {
-  it("Deberia ser una función", () => {
-    expect(typeof existPath).toBe("function");
-  });
-
-  it("Deberia retornar true si la ruta existe", () => {
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-
-    const userPath = 'ruta/existente';
-    const result = existPath(userPath);
-
-    expect(fs.existsSync).toHaveBeenCalledWith(userPath);
-    expect(result).toBe(true);
-  });
-
-  it("Deberia retornar false si la ruta no existe", () => {
-    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-
-    const userPath = 'ruta/no/existente';
-    const result = existPath(userPath);
-
-    expect(fs.existsSync).toHaveBeenCalledWith(userPath);
-    expect(result).toBe(false);
-  });
-});
